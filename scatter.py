@@ -29,14 +29,14 @@ class ball:
         self.periodic = periodic
 
         if pos is None:
-            if corners is None:
+            if self.corners is None:
                 raise ValueError('Must provide either pos or corners')
             else:
-                self.dim = len(corners)
+                self.dim = len(self.corners)
                 if self.dim > 3:
                     raise DimensionError('Dimenions grater than 3 '
                                          'not accepted')
-                lims = np.array(corners)
+                lims = np.array(self.corners)
                 self.pos = (np.random.random(size=self.dim)
                             * abs(lims[:, 1] - lims[:, 0])
                             + lims[:, 0])
@@ -86,6 +86,7 @@ class sim:
 
         self.corners = params.get(
             'corners', [[0, 1] for i in range(self.ndim)])
+        params.pop('corners', None)
 
         if 'v_const' in params:
             v_init = np.array([params['v_const']] * self.n_ball)
@@ -123,6 +124,7 @@ class sim:
             self.fig.set_size_inches(5, 1)
 
         self.scat = self.ax.scatter([], [])
+        self.started = False
         self.text = self.ax.text(0.5, 0.5, 'Click anywhere to begin',
                                  ha='center', va='center',
                                  fontdict={'fontsize': 18},
@@ -158,13 +160,17 @@ class sim:
             ball.advance(0.01)
 
     def animate(self, event):
-        self.anim = animation.FuncAnimation(self.fig, self.animation_update,
-                                            init_func=self.animation_init,
-                                            frames=100, blit=False,
-                                            interval=20)
+        if not self.started:
+            self.anim = animation.FuncAnimation(self.fig,
+                                                self.animation_update,
+                                                init_func=self.animation_init,
+                                                frames=100, blit=False,
+                                                interval=20)
+        self.started = True
         self.fig.canvas.draw()
 
 if __name__ == '__main__':
 
     bill = ball(corners=[[-1, 1], [-3, 3]])
-    mysim = sim(3, 2, v_const=2)
+    mysim = sim(3, 2, v_const=2, corners=[[0, 1], [-3, 3]],
+                periodic=1)
