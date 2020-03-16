@@ -65,9 +65,10 @@ class ball:
         self.pos += self.vel * dt
         if self.periodic:
             for i, bdry in enumerate(self.corners):
-                self.pos[i] = (self.pos[i] - bdry[0]) % bdry[1]
-                if self.pos[i] < bdry[0]:
-                    self.pos[i] = self.pos[i] + bdry[0]
+                if self.pos[i] > bdry[1]:
+                    self.pos[i] = self.pos[i] - (bdry[1] - bdry[0])
+                elif self.pos[i] <= bdry[0]:
+                    self.pos[i] = self.pos[i] + (bdry[1] - bdry[0])
 
     @property
     def v_mag(self):
@@ -119,6 +120,7 @@ class sim:
             xspan *= scaler
             yspan *= scaler
             self.fig.set_size_inches(xspan, yspan)
+            self.ax.set_aspect('equal')
         else:
             self.ax.set_ylim([-1, 1])
             self.fig.set_size_inches(5, 1)
@@ -171,6 +173,5 @@ class sim:
 
 if __name__ == '__main__':
 
-    bill = ball(corners=[[-1, 1], [-3, 3]])
-    mysim = sim(3, 2, v_const=2, corners=[[0, 1], [-3, 3]],
+    mysim = sim(10, 2, v_const=2, corners=[[-3, 4], [-1, 4]],
                 periodic=1)
