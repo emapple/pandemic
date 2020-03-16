@@ -81,7 +81,7 @@ class sim:
 
         self.n_ball = n_ball
         assert self.n_ball > 0
-        
+
         self.ndim = ndim
 
         self.corners = params.get(
@@ -123,11 +123,12 @@ class sim:
             self.fig.set_size_inches(5, 1)
 
         self.scat = self.ax.scatter([], [])
+        self.text = self.ax.text(0.5, 0.5, 'Click anywhere to begin',
+                                 ha='center', va='center',
+                                 fontdict={'fontsize': 18},
+                                 transform=self.ax.transAxes)
 
-        self.anim = animation.FuncAnimation(self.fig, self.animation_update,
-                                            init_func=self.animation_init,
-                                            frames=100, blit=False,
-                                            interval=20)
+        cid = self.fig.canvas.mpl_connect('button_press_event', self.animate)
 
     def _getall(self, attr):
         """Returns attribute attr for all balls"""
@@ -136,6 +137,7 @@ class sim:
 
     def animation_init(self):
         """Initialize animation"""
+        self.text.set_visible(False)
         self.scat.remove()
         self.scat = self.ax.scatter([], [])
         return self.scat,
@@ -155,6 +157,12 @@ class sim:
         for ball in self.balls:
             ball.advance(0.01)
 
+    def animate(self, event):
+        self.anim = animation.FuncAnimation(self.fig, self.animation_update,
+                                            init_func=self.animation_init,
+                                            frames=100, blit=False,
+                                            interval=20)
+        self.fig.canvas.draw()
 
 if __name__ == '__main__':
 
