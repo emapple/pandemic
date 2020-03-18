@@ -2,7 +2,24 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import maxwell
 from matplotlib import animation
+from matplotlib import collections as clt
 from ball import *
+
+
+class UpdatablePatchCollection(clt.PatchCollection):
+    """Updatable patch collection
+
+    Borrowed from 
+    https://stackoverflow.com/questions/48794016/animate-a-collection-of-patches-in-matplotlib
+    """
+
+    def __init__(self, patches, *args, **kwargs):
+        self.patches = patches
+        clt.PatchCollection.__init__(self, patches, *args, **kwargs)
+
+    def get_paths(self):
+        self.set_paths(self.patches)
+        return self._paths
 
 
 class sim:
@@ -63,39 +80,50 @@ class sim:
             self.ax.set_ylim([-1, 1])
             self.fig.set_size_inches(5, 1)
 
-        self.scat = self.ax.scatter([], [])
-        self.size_in_points = self.ax.transData.transform(self.size)
+        x, y = self._get_xy()
+        self.patches = [plt.Circle((ix, iy), self.size)
+                        for ix, iy in zip(x, y)]
+        self.collection = UpdatablePatchCollection(
+            self.patches, edgecolor='none', facecolor='none')
+        self.collection.set_array(np.zeros(len(self.balls)))
+        self.ax.add_collection(self.collection)
         self.started = False
         self.text = self.ax.text(0.5, 0.5, 'Click anywhere to begin',
                                  ha='center', va='center',
                                  fontdict={'fontsize': 18},
                                  transform=self.ax.transAxes)
+        self.fig.show()
 
         cid = self.fig.canvas.mpl_connect('button_press_event', self.animate)
 
     def _getall(self, attr):
         """Returns attribute attr for all balls"""
-
         return np.array([x.__getattribute__(attr) for x in self.balls])
 
-    def animation_init(self):
-        """Initialize animation"""
-        self.text.set_visible(False)
-        self.scat.remove()
-        self.scat = self.ax.scatter([], [])
-        return self.scat,
-
-    def animation_update(self, i):
-        self.step_forward()
+    def _get_xy(self):
+        """Convenience function for getting just x and y values"""
         x = self._getall('pos')[:, 0]
         if self.ndim > 1:
             y = self._getall('pos')[:, 1]
         else:
             y = np.zeros(len(x))
-        self.scat.set_offsets([[ix, iy] for ix, iy in zip(x, y)])
-        self.scat.set_array(np.zeros(len(x)))
-        self.scat.set_sizes(np.ones(len(x)) * self.size_in_points**2)
-        return self.scat,
+        return (x, y)
+
+    def animation_init(self):
+        """Initialize animation"""
+        x, y = self._get_xy()
+        self.collection.set_color('C0')
+        self.text.set_visible(False)
+
+        return self.collection,
+
+    def animation_update(self, i):
+        self.step_forward()
+        x, y = self._get_xy()
+        for p in range(len(self.balls)):
+            self.patches[p].center = x[p], y[p]
+
+        return self.collection,
 
     def step_forward(self):
         for ball in self.balls:
