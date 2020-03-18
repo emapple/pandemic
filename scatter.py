@@ -27,49 +27,17 @@ class sim:
 
     def __init__(self, n_ball, ndim, **params):
 
-        self.n_ball = n_ball
-        assert self.n_ball > 0
-
         self.ndim = ndim
+        self.n_ball = n_ball
 
-        self.corners = params.get(
-            'corners', [[0, 1] for i in range(self.ndim)])
-        params.pop('corners', None)
-
-        if 'v_const' in params:
-            v_init = np.array([params['v_const']] * self.n_ball)
-        elif 'v_maxwell_mu' in params:
-            if 'v_maxwell_sigma' not in params:
-                raise ValueError('Must provide both mu and scale for params')
-            mx = maxwell(loc=params['v_maxwell_mu'],
-                         scale=params['v_maxwell_sigma'])
-            v_init = mx.rvs(self.n_ball)
-        else:
-            v_init = np.random.random(size=self.n_ball)
-
-        vec = np.random.multivariate_normal(np.zeros(self.ndim),
-                                            cov=np.eye(self.ndim),
-                                            size=self.n_ball)
-
-        vec = (vec / np.sqrt(np.sum(vec**2, axis=1)).reshape(len(vec), 1)
-               * v_init.reshape(len(v_init), 1))
-
-        if 'rad' in params:
-            self.size = params['rad']
-        elif 'radius' in params:
-            self.size = params['radius']
-        else:
-            params['radius'] = 0.05
-            self.size = params['radius']
-
-        self.balls = [ball(vel=v, corners=self.corners, **params) for v in vec]
+        self.balls = ballCollection(self.n_ball, self.ndim, **params)
 
         self.fig, self.ax = plt.subplots(1, 1)
-        self.ax.set_xlim(self.corners[0])
+        self.ax.set_xlim(self.balls.corners[0])
         if self.ndim > 1:
-            self.ax.set_ylim(self.corners[1])
-            xspan = float(np.diff(self.corners[0]))
-            yspan = float(np.diff(self.corners[1]))
+            self.ax.set_ylim(self.balls.corners[1])
+            xspan = float(np.diff(self.balls.corners[0]))
+            yspan = float(np.diff(self.balls.corners[1]))
 
             scaler = 5. / xspan
             xspan *= scaler
@@ -80,12 +48,12 @@ class sim:
             self.ax.set_ylim([-1, 1])
             self.fig.set_size_inches(5, 1)
 
-        x, y = self._get_xy()
-        self.patches = [plt.Circle((ix, iy), self.size)
+        x, y = self.balls.get_xy()
+        self.patches = [plt.Circle((ix, iy), self.balls.size)
                         for ix, iy in zip(x, y)]
         self.collection = UpdatablePatchCollection(
             self.patches, edgecolor='none', facecolor='none')
-        self.collection.set_array(np.zeros(len(self.balls)))
+        self.collection.set_array(np.zeros(len(self.balls.balls)))
         self.ax.add_collection(self.collection)
         self.started = False
         self.text = self.ax.text(0.5, 0.5, 'Click anywhere to begin',
@@ -96,38 +64,21 @@ class sim:
 
         cid = self.fig.canvas.mpl_connect('button_press_event', self.animate)
 
-    def _getall(self, attr):
-        """Returns attribute attr for all balls"""
-        return np.array([x.__getattribute__(attr) for x in self.balls])
-
-    def _get_xy(self):
-        """Convenience function for getting just x and y values"""
-        x = self._getall('pos')[:, 0]
-        if self.ndim > 1:
-            y = self._getall('pos')[:, 1]
-        else:
-            y = np.zeros(len(x))
-        return (x, y)
-
     def animation_init(self):
         """Initialize animation"""
-        x, y = self._get_xy()
+        x, y = self.balls.get_xy()
         self.collection.set_color('C0')
         self.text.set_visible(False)
 
         return self.collection,
 
     def animation_update(self, i):
-        self.step_forward()
-        x, y = self._get_xy()
-        for p in range(len(self.balls)):
+        self.balls.step_forward()
+        x, y = self.balls.get_xy()
+        for p in range(len(self.balls.balls)):
             self.patches[p].center = x[p], y[p]
 
         return self.collection,
-
-    def step_forward(self):
-        for ball in self.balls:
-            ball.advance(0.01)
 
     def animate(self, event):
         if not self.started:

@@ -77,7 +77,67 @@ class ball:
         return np.sqrt(np.sum(self.vel**2))
 
 
+class ballCollection:
+    """A collection of balls, including movement laws"""
+
+    def __init__(self, n_ball, ndim, **params):
+        self.n_ball = n_ball
+        assert self.n_ball > 0
+
+        self.ndim = ndim
+
+        self.corners = params.get(
+            'corners', [[0, 1] for i in range(self.ndim)])
+        params.pop('corners', None)
+
+        if 'v_const' in params:
+            v_init = np.array([params['v_const']] * self.n_ball)
+        elif 'v_maxwell_mu' in params:
+            if 'v_maxwell_sigma' not in params:
+                raise ValueError('Must provide both mu and scale for params')
+            mx = maxwell(loc=params['v_maxwell_mu'],
+                         scale=params['v_maxwell_sigma'])
+            v_init = mx.rvs(self.n_ball)
+        else:
+            v_init = np.random.random(size=self.n_ball)
+
+        vec = np.random.multivariate_normal(np.zeros(self.ndim),
+                                            cov=np.eye(self.ndim),
+                                            size=self.n_ball)
+
+        vec = (vec / np.sqrt(np.sum(vec**2, axis=1)).reshape(len(vec), 1)
+               * v_init.reshape(len(v_init), 1))
+
+        if 'rad' in params:
+            self.size = params['rad']
+        elif 'radius' in params:
+            self.size = params['radius']
+        else:
+            params['radius'] = 0.05
+            self.size = params['radius']
+
+        self.balls = [ball(vel=v, corners=self.corners, **params) for v in vec]
+
+    def get_xy(self):
+        """Convenience function for getting just x and y values"""
+        x = self._getall('pos')[:, 0]
+        if self.ndim > 1:
+            y = self._getall('pos')[:, 1]
+        else:
+            y = np.zeros(len(x))
+        return (x, y)
+
+    def _getall(self, attr):
+        """Returns attribute attr for all balls"""
+        return np.array([x.__getattribute__(attr) for x in self.balls])
+
+    def step_forward(self):
+        for ball in self.balls:
+            ball.advance(0.01)
+
+
 # class hardball(ball):
 # 	"""Hard scattering ball"""
+#     def nneighbor
 # 	def advance(self, dt):
 # 		collisions =
