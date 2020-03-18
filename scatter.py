@@ -2,77 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import maxwell
 from matplotlib import animation
-
-
-class DimensionError(Exception):
-    pass
-
-
-class ball:
-    """A billiard ball object
-
-    Contains 3D space and 3D velocities
-    """
-
-    def __init__(self, pos=None, vel=None, corners=None, periodic=0,
-                 **kwargs):
-        """Initialize 6D phase space of ball
-
-        If pos not provided, randomly chosen positions according to
-                corners, which must be provided
-
-        corners is a series of tuples/lists defining boundaries,
-                        e.g. ((minx, maxx), (miny, maxy))
-        """
-
-        self.corners = corners
-        self.periodic = periodic
-
-        if pos is None:
-            if self.corners is None:
-                raise ValueError('Must provide either pos or corners')
-            else:
-                self.dim = len(self.corners)
-                if self.dim > 3:
-                    raise DimensionError('Dimenions grater than 3 '
-                                         'not accepted')
-                lims = np.array(self.corners)
-                self.pos = (np.random.random(size=self.dim)
-                            * abs(lims[:, 1] - lims[:, 0])
-                            + lims[:, 0])
-
-        else:
-            if len(pos) > 3:
-                raise DimensionError('Dimenions grater than 3 not accepted')
-            else:
-                self.dim = len(pos)
-            self.pos = np.array(pos)
-
-        if vel is not None:
-            assert len(self.pos) == len(vel)
-            self.vel = np.array(vel)
-        else:
-            self.vel = np.array([0] * len(self.pos))
-
-        if periodic:
-            if self.corners is None:
-                raise ValueError('Must specify boundaries for periodic'
-                                 'boundary conditions')
-            self.periodic = True
-
-    def advance(self, dt):
-        """Advance position forward by time dt"""
-        self.pos += self.vel * dt
-        if self.periodic:
-            for i, bdry in enumerate(self.corners):
-                if self.pos[i] > bdry[1]:
-                    self.pos[i] = self.pos[i] - (bdry[1] - bdry[0])
-                elif self.pos[i] <= bdry[0]:
-                    self.pos[i] = self.pos[i] + (bdry[1] - bdry[0])
-
-    @property
-    def v_mag(self):
-        return np.sqrt(np.sum(self.vel**2))
+from ball import *
 
 
 class sim:
@@ -107,6 +37,14 @@ class sim:
         vec = (vec / np.sqrt(np.sum(vec**2, axis=1)).reshape(len(vec), 1)
                * v_init.reshape(len(v_init), 1))
 
+        if 'rad' in params:
+            self.size = params['rad']
+        elif 'radius' in params:
+            self.size = params['radius']
+        else:
+            params['radius'] = 0.05
+            self.size = params['radius']
+
         self.balls = [ball(vel=v, corners=self.corners, **params) for v in vec]
 
         self.fig, self.ax = plt.subplots(1, 1)
@@ -126,6 +64,7 @@ class sim:
             self.fig.set_size_inches(5, 1)
 
         self.scat = self.ax.scatter([], [])
+        self.size_in_points = self.ax.transData.transform(self.size)
         self.started = False
         self.text = self.ax.text(0.5, 0.5, 'Click anywhere to begin',
                                  ha='center', va='center',
@@ -155,6 +94,7 @@ class sim:
             y = np.zeros(len(x))
         self.scat.set_offsets([[ix, iy] for ix, iy in zip(x, y)])
         self.scat.set_array(np.zeros(len(x)))
+        self.scat.set_sizes(np.ones(len(x)) * self.size_in_points**2)
         return self.scat,
 
     def step_forward(self):
