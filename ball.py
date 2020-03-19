@@ -1,8 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import maxwell
-# from sklearn.metrics import pairwise_distances
 
+# with thanks to 
+# https://pdfs.semanticscholar.org/cd56/57befb9af4fd531d33892ed9e5b0098de1d6.pdf
+# for some useful information
 
 class DimensionError(Exception):
     pass
@@ -137,9 +139,9 @@ class ballCollection:
         """Returns attribute attr for all balls"""
         return np.array([x.__getattribute__(attr) for x in self.balls])
 
-    def step_forward(self):
+    def step_forward(self, dt):
         for ball in self.balls:
-            ball.advance(0.01)
+            ball.advance(dt)
 
 
 class hardBallCollection(ballCollection):
@@ -154,11 +156,11 @@ class hardBallCollection(ballCollection):
         T = (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
         return np.where((T > 0) & (T < dt))
 
-    def step_forward(self):
-        colli, collj = self.will_collide(0.01)
+    def step_forward(self, dt):
+        colli, collj = self.will_collide(dt)
         assert len(colli) % 2 == 0  # all pairs should be repeated
         for i, ball in enumerate(self.balls):
             if i not in colli:
-                ball.advance(0.01)
+                ball.advance(dt)
             else:
                 ball.vel = -ball.vel

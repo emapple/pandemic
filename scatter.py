@@ -37,6 +37,9 @@ class sim:
         else:
             self.balls = ballCollection(self.n_ball, self.ndim, **params)
 
+        self.dt = params.get('dt', 0.01)
+        self.interval = params.get('interval', 20)
+
         self.fig, self.ax = plt.subplots(1, 1)
         self.ax.set_xlim(self.balls.corners[0])
         if self.ndim > 1:
@@ -80,8 +83,8 @@ class sim:
 
         return self.collection,
 
-    def animation_update(self, i):
-        self.balls.step_forward()
+    def animation_update(self, i, dt):
+        self.balls.step_forward(dt)
         x, y = self.balls.get_xy()
         for p in range(len(self.balls.balls)):
             self.patches[p].center = x[p], y[p]
@@ -91,10 +94,11 @@ class sim:
     def animate(self, event):
         if not self.started:
             self.anim = animation.FuncAnimation(self.fig,
-                                                self.animation_update,
+                                                lambda i: self.animation_update(i,
+                                                                                self.dt),
                                                 init_func=self.animation_init,
                                                 frames=100, blit=False,
-                                                interval=20)
+                                                interval=self.interval)
         self.started = True
         self.fig.canvas.draw()
 
