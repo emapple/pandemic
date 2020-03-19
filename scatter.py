@@ -108,7 +108,15 @@ class sim:
                                           init_func=self.animation_init,
                                           frames=100, blit=False,
                                           interval=self.interval)
-        self.started = True
+            self.started = True
+            self.pause = False
+        else:
+            if self.pause:
+                self.anim.event_source.start()
+                self.pause = False
+            else:
+                self.anim.event_source.stop()
+                self.pause = True
         self.fig.canvas.draw()
 
 if __name__ == '__main__':
