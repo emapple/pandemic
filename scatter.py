@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import maxwell
-from matplotlib import animation
+from matplotlib import animation as ani
 from matplotlib import collections as clt
 from ball import *
 
@@ -40,6 +40,8 @@ class sim:
         self.dt = params.get('dt', 0.01)
         self.interval = params.get('interval', 20)
 
+        self.time = 0.0
+
         self.fig, self.ax = plt.subplots(1, 1)
         self.ax.set_xlim(self.balls.corners[0])
         if self.ndim > 1:
@@ -52,12 +54,15 @@ class sim:
             yspan *= scaler
             self.fig.set_size_inches(xspan, yspan)
             self.ax.set_aspect('equal')
-            self.fig.tight_layout()
         else:
-            self.ax.set_ylim([-0.5, 0.5])
-            self.fig.set_size_inches(5, 1)
+            xspan = float(np.diff(self.balls.corners[0]))
+            yspan = xspan / 10
+            self.ax.set_ylim([-yspan/2, yspan/2])
+            self.fig.set_size_inches(8, 1)
             self.ax.set_aspect('equal')
-            self.fig.tight_layout()
+
+        self.ax.set_title(f't={self.time:.2f}')
+        self.fig.tight_layout()
 
         x, y = self.balls.get_xy()
         self.patches = [plt.Circle((ix, iy), self.balls.size)
@@ -89,16 +94,20 @@ class sim:
         for p in range(len(self.balls.balls)):
             self.patches[p].center = x[p], y[p]
 
+        self.time += dt
+        self.ax.set_title(f't={self.time:.2f}')
+
         return self.collection,
 
     def animate(self, event):
         if not self.started:
-            self.anim = animation.FuncAnimation(self.fig,
-                                                lambda i: self.animation_update(i,
-                                                                                self.dt),
-                                                init_func=self.animation_init,
-                                                frames=100, blit=False,
-                                                interval=self.interval)
+            self.anim = ani.FuncAnimation(self.fig,
+                                          (lambda i:
+                                           self.animation_update(i,
+                                                                 self.dt)),
+                                          init_func=self.animation_init,
+                                          frames=100, blit=False,
+                                          interval=self.interval)
         self.started = True
         self.fig.canvas.draw()
 
