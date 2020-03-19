@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import maxwell
+# from sklearn.metrics import pairwise_distances
 
 
 class DimensionError(Exception):
@@ -58,6 +59,11 @@ class ball:
                 raise ValueError('Must specify boundaries for periodic'
                                  'boundary conditions')
             self.periodic = True
+
+        if 'radius' in kwargs:
+            self.size = kwargs['radius']
+        else:
+            self.size = 0.05
 
     def advance(self, dt):
         """Advance position forward by time dt"""
@@ -136,8 +142,23 @@ class ballCollection:
             ball.advance(0.01)
 
 
-# class hardball(ball):
-# 	"""Hard scattering ball"""
-#     def nneighbor
-# 	def advance(self, dt):
-# 		collisions =
+class hardBallCollection(ballCollection):
+    """Hard scattering ball"""
+    def will_collide(self, dt):
+        """Calculate pairs that will collide within time dt"""
+        dp = np.array([np.subtract.outer(p, p) for p in self._getall('pos').transpose()])
+        dv = np.array([np.subtract.outer(v, v) for v in self._getall('vel').transpose()])
+        pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
+        pv = (dp * dv).sum(axis=0)
+        vv = (dv * dv).sum(axis=0)
+        T = (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
+        return np.where((T > 0) & (T < dt))
+
+    def step_forward(self):
+        colli, collj = self.will_collide(0.01)
+        assert len(colli) % 2 == 0  # all pairs should be repeated
+        for i, ball in enumerate(self.balls):
+            if i not in colli:
+                ball.advance(0.01)
+            else:
+                ball.vel = -ball.vel
