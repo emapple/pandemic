@@ -30,7 +30,12 @@ class sim:
         self.ndim = ndim
         self.n_ball = n_ball
 
-        self.balls = ballCollection(self.n_ball, self.ndim, **params)
+        if 'ball' in params:
+            if params['ball'].lower().startswith('hard'):
+                self.balls = hardBallCollection(
+                    self.n_ball, self.ndim, **params)
+        else:
+            self.balls = ballCollection(self.n_ball, self.ndim, **params)
 
         self.fig, self.ax = plt.subplots(1, 1)
         self.ax.set_xlim(self.balls.corners[0])
@@ -39,14 +44,17 @@ class sim:
             xspan = float(np.diff(self.balls.corners[0]))
             yspan = float(np.diff(self.balls.corners[1]))
 
-            scaler = 5. / xspan
+            scaler = 8. / xspan
             xspan *= scaler
             yspan *= scaler
             self.fig.set_size_inches(xspan, yspan)
             self.ax.set_aspect('equal')
+            self.fig.tight_layout()
         else:
-            self.ax.set_ylim([-1, 1])
+            self.ax.set_ylim([-0.5, 0.5])
             self.fig.set_size_inches(5, 1)
+            self.ax.set_aspect('equal')
+            self.fig.tight_layout()
 
         x, y = self.balls.get_xy()
         self.patches = [plt.Circle((ix, iy), self.balls.size)
