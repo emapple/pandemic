@@ -39,10 +39,30 @@ class sim:
 
         self.dt = params.get('dt', 0.01)
         self.interval = params.get('interval', 20)
+        self.dohist = params.get('dohist', False)
 
         self.time = 0.0
 
         self.fig, self.ax = plt.subplots(1, 1)
+        if self.dohist:
+            self.fig2, self.ax2 = plt.subplots(1, 1)
+            self.fig2.set_size_inches(5, 3)
+            self.ax2.set_xlim([0, 1.75 * np.max(self.balls._getall('v_mag'))])
+            self.ax2.set_ylim([0, 1.5 * len(self.balls.balls)])
+            self.ax2.set_xlabel('Velocity')
+            self.ax2.set_ylabel('N')
+            self.ax2.set_title(f't={self.time:.2f}')
+            self.histbins = np.linspace(0,
+                                        1.5 *
+                                        np.max(self.balls._getall('v_mag')),
+                                        len(self.balls.balls) // 5)
+            vals, histbins = np.histogram(self.balls._getall('v_mag'),
+                                          bins=self.histbins)
+            self.barcollection = self.ax2.bar(0.5 * (histbins[1:]
+                                                     + histbins[:-1]), vals,
+                                              np.diff(histbins)[0], color='C0')
+            self.fig2.tight_layout()
+            self.fig2.show()
         self.ax.set_xlim(self.balls.corners[0])
         if self.ndim > 1:
             self.ax.set_ylim(self.balls.corners[1])
@@ -57,7 +77,7 @@ class sim:
         else:
             xspan = float(np.diff(self.balls.corners[0]))
             yspan = xspan / 10
-            self.ax.set_ylim([-yspan/2, yspan/2])
+            self.ax.set_ylim([-yspan / 2, yspan / 2])
             self.fig.set_size_inches(8, 1)
             self.ax.set_aspect('equal')
 
@@ -118,8 +138,26 @@ class sim:
                 self.anim.event_source.stop()
                 self.pause = True
         self.fig.canvas.draw()
+        if self.dohist:
+            self.anim2 = ani.FuncAnimation(self.fig2,
+                                           self.hist_animation,
+                                           frames=100, blit=False,
+                                           interval=self.interval)
+            self.fig2.canvas.draw()
+
+    def hist_animation(self, i):
+        vals, histbins = np.histogram(self.balls._getall('v_mag'),
+                                      bins=self.histbins)
+        [bc.set_height(v) for bc, v in zip(self.barcollection, vals)]
+
+        return self.barcollection,
+
 
 if __name__ == '__main__':
 
-    mysim = sim(10, 2, v_const=2, corners=[[-3, 4], [-1, 4]],
-                periodic=1)
+    # mysim = sim(10, 2, v_const=2, corners=[[-3, 4], [-1, 4]],
+                # periodic=1)
+
+    mysim = sim(50, 2, v_maxwell_mu=5, v_maxwell_sigma=1, periodic=1,
+                corners=[[-3, 3], [-3, 3]], ball='hard', dt=0.005, rad=0.1,
+                interval=10, dohist=True)
