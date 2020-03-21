@@ -76,10 +76,7 @@ class ball:
     def wrap(self):
         if self.periodic:
             for i, bdry in enumerate(self.corners):
-                if self.pos[i] > bdry[1]:
-                    self.pos[i] = self.pos[i] - (bdry[1] - bdry[0])
-                elif self.pos[i] <= bdry[0]:
-                    self.pos[i] = self.pos[i] + (bdry[1] - bdry[0])
+                self.pos[i] %= bdry[1]
 
     @property
     def v_mag(self):
@@ -95,9 +92,13 @@ class ballCollection:
 
         self.ndim = ndim
 
-        self.corners = params.get(
-            'corners', [[0, 1] for i in range(self.ndim)])
-        params.pop('corners', None)
+        if 'corners' in params:
+            # move origin to 0
+            self.corners = [[0, np.diff(corner)[0]]
+                            for corner in params['corners']]
+            params.pop('corners', None)
+        else:
+            self.corners = [[0, 1] for i in range(self.ndim)]
 
         if 'v_const' in params:
             v_init = np.array([params['v_const']] * self.n_ball)
@@ -159,6 +160,11 @@ class ballCollection:
         """Returns attribute attr for all balls"""
         return np.array([x.__getattribute__(attr) for x in self.balls])
 
+    def _setall(self, attr, all_attrs):
+        """Setts attribute attr for all balls"""
+        [ball.__setattr__(attr, val)
+         for ball, val in zip(self.balls, all_attrs)]
+
     def step_forward(self, dt):
         for ball in self.balls:
             ball.advance(dt)
@@ -184,9 +190,11 @@ class hardBallCollection(ballCollection):
 
     def step_forward(self, dt):
         (colli, collj), t_to_intersect = self.will_collide(dt)
-        for i, ball in enumerate(self.balls):
-            if i not in colli:
-                ball.advance(dt)
+        # for i, ball in enumerate(self.balls):
+        [ball.advance(dt)
+         for i, ball in enumerate(self.balls) if i not in colli]
+        # if i not in colli:
+        #     ball.advance(dt)
         # avoiding repeats
         if len(colli) > 0:
             for i, j, tto in zip(colli[:len(colli) // 2], collj[:len(collj) // 2],
@@ -194,8 +202,8 @@ class hardBallCollection(ballCollection):
                 self.balls[i].advance(tto)
                 self.balls[j].advance(tto)
                 # they should now be bordering each other
-                assert(np.sqrt(np.sum((self.balls[i].pos - self.balls[j].pos)**2))
-                              - (2 * self.size) < 1e-5)
+                # assert(np.sqrt(np.sum((self.balls[i].pos - self.balls[j].pos)**2))
+                #        - (2 * self.size) < 1e-5)
                 self.collide(self.balls[i], self.balls[j])
                 self.balls[i].advance(dt - tto)
                 self.balls[j].advance(dt - tto)
