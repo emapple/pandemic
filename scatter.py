@@ -41,6 +41,16 @@ class sim:
         self.interval = params.get('interval', 20)
         self.dohist = params.get('dohist', False)
 
+        if 'colorby' in params:
+            self.colorby = params['colorby']
+        else:
+            self.colorby = None
+
+        if self.colorby == 'velocity':
+            self.cmap = plt.cm.ScalarMappable(cmap=params.get('cmap',
+                                                              'viridis'))
+            self.cmap.set_clim(0, 2 * np.max(self.balls._getall('v_mag')))
+
         self.time = 0.0
 
         self.fig, self.ax = plt.subplots(1, 1)
@@ -105,6 +115,9 @@ class sim:
         x, y = self.balls.get_xy()
         self.collection.set_color('C0')
         self.text.set_visible(False)
+        if self.colorby == 'velocity':
+            self.collection.set_color([self.cmap.to_rgba(v)
+                                       for v in self.balls._getall('v_mag')])
 
         return self.collection,
 
@@ -116,6 +129,10 @@ class sim:
 
         self.time += dt
         self.ax.set_title(f't={self.time:.2f}')
+
+        if self.colorby == 'velocity':
+            self.collection.set_color([self.cmap.to_rgba(v)
+                                       for v in self.balls._getall('v_mag')])
 
         return self.collection,
 
