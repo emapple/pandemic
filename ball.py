@@ -97,6 +97,7 @@ class ballCollection:
 
         self.ndim = ndim
 
+        self.periodic = params.get('periodic', 1)
         if 'corners' in params:
             # move origin to 0
             self.corners = [[0, np.diff(corner)[0]]
@@ -143,25 +144,23 @@ class ballCollection:
         self.time = 0
 
         # make sure no balls are overlapping at start
-        dp = np.array([np.subtract.outer(p, p)
-                       for p in self._getall('pos').transpose()])
-        pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
-        pp[np.arange(len(pp)), np.arange(len(pp))] = 1
-        locs = np.where(pp <= 0)
-        if len(locs[0]) > 0:
-            print('Moving initial overlapping balls')
-            while(True):
-                print('iterating')
-                for i in locs[0][:len(locs[0]) // 2]:
-                    self.balls[i].pos = self.balls[i].pos + 2 * \
-                        (0.5 - np.random.random(self.ndim)) * self.size
-                dp = np.array([np.subtract.outer(p, p)
-                               for p in self._getall('pos').transpose()])
-                pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
-                pp[np.arange(len(pp)), np.arange(len(pp))] = 1
-                locs = np.where(pp <= 0)
-                if len(locs[0]) == 0:
-                    break
+        print('Moving any initially overlapping balls')
+        while(True):
+            # print('iterating')
+            locs1 = self.overlaps(self._getall('pos').transpose())
+            if self.periodic:
+                allpos2 = np.vstack([(self._getall('pos')[:, i] + 1) % bdry[1]
+                                     for i, bdry in enumerate(self.corners)])
+                locs2 = self.overlaps(allpos2)
+            else:
+                locs2 = ()
+
+            if len(locs1) == 0 and len(locs2) == 0:
+                break
+            for i in locs1 + [loc for loc in locs2 if loc not in locs1]:
+                self.balls[i[0]].pos = self.balls[i[0]].pos + 4 * \
+                    (0.5 - np.random.random(self.ndim)) * self.size
+                self.balls[i[0]].wrap()
 
     def get_xy(self):
         """Convenience function for getting just x and y values"""
@@ -185,6 +184,26 @@ class ballCollection:
         for ball in self.balls:
             ball.advance(dt)
 
+    def overlaps(self, positions):
+        dp = np.array([np.subtract.outer(p, p)
+                       for p in positions])
+        pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
+
+        # exclude diagonals
+        locs = np.where((pp < 0) & (np.eye(len(pp)) != 1))
+
+        temp_locs = [(i, j) for i, j in zip(locs[0], locs[1])]
+
+        return list(set([tuple(self.pair_sort(loc)) for loc in temp_locs]))
+
+    @staticmethod
+    def pair_sort(pair):
+        """Sorts a 2-tuple"""
+        if pair[0] > pair[1]:
+            return (pair[1], pair[0])
+        else:
+            return pair
+
 
 class hardBallCollection(ballCollection):
     """Hard scattering ball"""
@@ -198,15 +217,11 @@ class hardBallCollection(ballCollection):
         pv = (dp * dv).sum(axis=0)
         vv = (dv * dv).sum(axis=0)
 
-        return (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
+        len_missed = len(np.where((pp < 0) & (np.eye(len(pp)) != 1))[0])
+        if len_missed > 0:
+            print(f'Missed {len_missed}')
 
-    @staticmethod
-    def pair_sort(pair):
-        """Sorts a 2-tuple"""
-        if pair[0] > pair[1]:
-            return (pair[1], pair[0])
-        else:
-            return pair
+        return (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
 
     def will_collide(self, dt, iords=None):
         """Calculate pairs that will collide within time dt
@@ -223,21 +238,24 @@ class hardBallCollection(ballCollection):
             allpos = allpos[idx]
             allvel = allvel[idx]
 
-        allpos2 = np.vstack([(allpos[:, i] + 1) % bdry[1]
-                             for i, bdry in enumerate(self.corners)])
-
         T = self.time_to_collision(allpos.transpose(), allvel.transpose())
-        T2 = self.time_to_collision(allpos2, allvel.transpose())
-
         locs1 = np.where(((T > 0) & (T <= dt)))
-        locs2 = np.where(((T2 > 0) & (T2 <= dt)))
+
+        if self.periodic:
+            allpos2 = np.vstack([(allpos[:, i] + 1) % bdry[1]
+                                 for i, bdry in enumerate(self.corners)])
+            T2 = self.time_to_collision(allpos2, allvel.transpose())
+            locs2 = np.where(((T2 > 0) & (T2 <= dt)))
+        else:
+            locs2 = []
 
         temp_loc = [(i, j) for i, j in zip(locs1[0], locs1[1])]
         locs1 = list(set([self.pair_sort(pair) for pair in temp_loc]))
 
-        temp_loc2 = [(i, j) for i, j in zip(locs2[0], locs2[1])
-                     if (i, j) not in temp_loc]
-        locs2 = list(set([self.pair_sort(pair) for pair in temp_loc2]))
+        if self.periodic:
+            temp_loc2 = [(i, j) for i, j in zip(locs2[0], locs2[1])
+                         if (i, j) not in temp_loc]
+            locs2 = list(set([self.pair_sort(pair) for pair in temp_loc2]))
 
         t_to_intersection = [T[idx]
                              for idx in locs1] + [T2[idx] for idx in locs2]
@@ -267,7 +285,7 @@ class hardBallCollection(ballCollection):
                                     if ball.iord in iords]
             else:
                 balls_to_advance = self.balls
-                
+
             [ball.advance(dt)
              for i, ball in enumerate(balls_to_advance) if i not in idx_list]
 
@@ -309,3 +327,4 @@ class hardBallCollection(ballCollection):
         assert np.all((ball1.vel + ball2.vel - (vel1old + vel2old)) < 1e-5)
         assert np.sum(ball1.vel**2 + ball2.vel**2) - \
             np.sum(vel1old**2 + vel2old**2) < 1e-5
+
