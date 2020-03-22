@@ -47,17 +47,17 @@ class sim:
         if self.dohist:
             self.fig2, self.ax2 = plt.subplots(1, 1)
             self.fig2.set_size_inches(5, 3)
-            self.ax2.set_xlim([0, 1.75 * np.max(self.balls._getall('v_mag'))])
-            self.ax2.set_ylim([0, 1.5 * len(self.balls.balls)])
             self.ax2.set_xlabel('Velocity')
             self.ax2.set_ylabel('N')
             self.ax2.set_title(f't={self.time:.2f}')
             self.histbins = np.linspace(0,
-                                        1.5 *
+                                        2.5 *
                                         np.max(self.balls._getall('v_mag')),
-                                        len(self.balls.balls) // 5)
+                                        len(self.balls.balls) // 9)
             vals, histbins = np.histogram(self.balls._getall('v_mag'),
                                           bins=self.histbins)
+            self.ax2.set_ylim([0, 1.2 * np.max(vals)])
+            self.ax2.set_xlim([0, 1.2 * histbins[1:][vals > 0][-1]])
             self.barcollection = self.ax2.bar(0.5 * (histbins[1:]
                                                      + histbins[:-1]), vals,
                                               np.diff(histbins)[0], color='C0')
@@ -149,6 +149,9 @@ class sim:
         vals, histbins = np.histogram(self.balls._getall('v_mag'),
                                       bins=self.histbins)
         [bc.set_height(v) for bc, v in zip(self.barcollection, vals)]
+        self.ax2.set_title(f't={self.time:.2f}')
+        self.ax2.set_ylim([0, np.max(vals) * 1.2])
+        self.ax2.set_xlim([0, 1.2 * histbins[1:][vals > 0][-1]])
 
         return self.barcollection,
 
