@@ -131,6 +131,12 @@ class ballCollection:
             params['radius'] = 0.05
             self.size = params['radius']
 
+        max_span = np.sqrt(np.sum([bdry[1]**2 for bdry in self.corners]))
+        if (n_ball * self.size * 2)**(1. / self.ndim) > 0.5 * max_span:
+            raise RuntimeError('Not enough space for requested parameters\n' +
+                               'Either reduce number or size of balls,' +
+                               ' or increase box size')
+
         self.balls = [ball(vel=v, corners=self.corners, iord=i, **params)
                       for i, v in enumerate(vec)]
 
@@ -145,6 +151,7 @@ class ballCollection:
         if len(locs[0]) > 0:
             print('Moving initial overlapping balls')
             while(True):
+                print('iterating')
                 for i in locs[0][:len(locs[0]) // 2]:
                     self.balls[i].pos = self.balls[i].pos + 2 * \
                         (0.5 - np.random.random(self.ndim)) * self.size
@@ -182,6 +189,25 @@ class ballCollection:
 class hardBallCollection(ballCollection):
     """Hard scattering ball"""
 
+    def time_to_collision(self, positions, velocities):
+        dp = np.array([np.subtract.outer(p, p)
+                       for p in positions])
+        dv = np.array([np.subtract.outer(v, v)
+                       for v in velocities])
+        pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
+        pv = (dp * dv).sum(axis=0)
+        vv = (dv * dv).sum(axis=0)
+
+        return (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
+
+    @staticmethod
+    def pair_sort(pair):
+        """Sorts a 2-tuple"""
+        if pair[0] > pair[1]:
+            return (pair[1], pair[0])
+        else:
+            return pair
+
     def will_collide(self, dt, iords=None):
         """Calculate pairs that will collide within time dt
 
@@ -196,76 +222,69 @@ class hardBallCollection(ballCollection):
                             None, :] == iords[:, None], axis=1)
             allpos = allpos[idx]
             allvel = allvel[idx]
-        dp = np.array([np.subtract.outer(p, p)
-                       for p in allpos.transpose()])
+
         allpos2 = np.vstack([(allpos[:, i] + 1) % bdry[1]
                              for i, bdry in enumerate(self.corners)])
-        dp2 = np.array([np.subtract.outer(p, p)
-                        for p in allpos2])
-        dv = np.array([np.subtract.outer(v, v)
-                       for v in allvel.transpose()])
-        pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
-        pp2 = (dp2 * dp2).sum(axis=0) - (2 * self.size)**2
-        pv = (dp * dv).sum(axis=0)
-        pv2 = (dp2 * dv).sum(axis=0)
-        vv = (dv * dv).sum(axis=0)
-        T = (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
-        T2 = (-pv2 - np.sqrt((pv2 * pv2) - (pp2 * vv))) / vv
+
+        T = self.time_to_collision(allpos.transpose(), allvel.transpose())
+        T2 = self.time_to_collision(allpos2, allvel.transpose())
 
         locs1 = np.where(((T > 0) & (T <= dt)))
         locs2 = np.where(((T2 > 0) & (T2 <= dt)))
 
         temp_loc = [(i, j) for i, j in zip(locs1[0], locs1[1])]
-        t2 = [T2[i, j] for i, j in zip(locs2[0], locs2[1])
-              if (i, j) not in temp_loc]
-        temp_loc = temp_loc + [(i, j) for i, j in zip(locs2[0], locs2[1])
-                               if (i, j) not in temp_loc]
+        locs1 = list(set([self.pair_sort(pair) for pair in temp_loc]))
 
-        locs = np.array(temp_loc).reshape((2, len(temp_loc))).astype(int)
+        temp_loc2 = [(i, j) for i, j in zip(locs2[0], locs2[1])
+                     if (i, j) not in temp_loc]
+        locs2 = list(set([self.pair_sort(pair) for pair in temp_loc2]))
 
-        if len(locs[0]) != len(locs1[0]):
-            print('Edge effect found\n\n\n')
+        t_to_intersection = [T[idx]
+                             for idx in locs1] + [T2[idx] for idx in locs2]
 
-        t_to_intersection = np.array(list(T[locs1]) + t2)
-        assert len(t_to_intersection) == len(locs[0])
+        locs = locs1 + locs2
+
+        assert len(t_to_intersection) == len(locs)
         return locs, t_to_intersection
 
     def step_forward(self, dt, multistep=True, iords=None):
         """If multistep, will subdivide to avoid multiple simultaneous collisions"""
-        (colli, collj), t_to_intersect = self.will_collide(dt, iords=iords)
+        collij, t_to_intersect = self.will_collide(dt, iords=iords)
+        idx_list = np.unique(collij)
+
         if (multistep and
-                len(colli) > 0 and
-                np.max(np.unique(colli, return_counts=True)[1])) > 1:
+                len(collij) > 0 and
+                np.max(np.unique(collij, return_counts=True)[1])) > 1:
+            print('Recurse')
             if iords is None:
                 iords = np.arange(len(self.balls))
             for i in range(10):
                 self.step_forward(dt / 10, multistep=True,
-                                  iords=iords[np.sort(list(set(colli)))])
+                                  iords=iords[idx_list])
         else:
             if iords is not None:
                 balls_to_advance = [ball for i, ball in enumerate(self.balls)
                                     if ball.iord in iords]
             else:
                 balls_to_advance = self.balls
-                # for i, ball in enumerate(self.balls):
+                
             [ball.advance(dt)
-             for i, ball in enumerate(balls_to_advance) if i not in colli]
+             for i, ball in enumerate(balls_to_advance) if i not in idx_list]
 
             self.time += dt
-            # if i not in colli:
-            #     ball.advance(dt)
+
             # avoiding repeats
-            if len(colli) > 0:
-                for i, j, tto in zip(colli[:len(colli) // 2], collj[:len(collj) // 2],
-                                     t_to_intersect[:len(t_to_intersect // 2)]):
-                    balls_to_advance[i].advance(tto)
-                    balls_to_advance[j].advance(tto)
+            if len(collij) > 0:
+                for loc, tto in zip(collij, t_to_intersect):
+                    balls_to_advance[loc[0]].advance(tto)
+                    balls_to_advance[loc[1]].advance(tto)
                     # they should now be bordering each other
-                    # assert(np.sqrt(np.sum((self.balls[i].pos - self.balls[j].pos)**2))
-                    #        - (2 * self.size) < 1e-5)
-                    self.collide(balls_to_advance[i], balls_to_advance[j])
-                    balls_to_advance[i].advance(dt - tto)
-                    balls_to_advance[j].advance(dt - tto)
+                    # print(np.sqrt(np.sum((self.balls[loc[0]].pos - self.balls[loc[1]].pos)**2)))
+                    # assert(abs(np.sqrt(np.sum((self.balls[loc[0]].pos - self.balls[loc[1]].pos)**2)) - (2 * self.size)) < 1e-5)
+                    self.collide(balls_to_advance[
+                                 loc[0]], balls_to_advance[loc[1]])
+                    balls_to_advance[loc[0]].advance(dt - tto)
+                    balls_to_advance[loc[1]].advance(dt - tto)
 
     def collide(self, ball1, ball2):
         """Ammend velocities of colliding balls"""
@@ -286,4 +305,7 @@ class hardBallCollection(ballCollection):
             tangent * (tangent.dot(ball2.vel))
         ball1.vel = ball1_vel_temp
 
+        # assert momentum and energy conserved
         assert np.all((ball1.vel + ball2.vel - (vel1old + vel2old)) < 1e-5)
+        assert np.sum(ball1.vel**2 + ball2.vel**2) - \
+            np.sum(vel1old**2 + vel2old**2) < 1e-5
