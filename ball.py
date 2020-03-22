@@ -217,10 +217,6 @@ class hardBallCollection(ballCollection):
         pv = (dp * dv).sum(axis=0)
         vv = (dv * dv).sum(axis=0)
 
-        len_missed = len(np.where((pp < 0) & (np.eye(len(pp)) != 1))[0])
-        if len_missed > 0:
-            print(f'Missed {len_missed}')
-
         return (-pv - np.sqrt((pv * pv) - (pp * vv))) / vv
 
     def will_collide(self, dt, iords=None):
@@ -273,12 +269,13 @@ class hardBallCollection(ballCollection):
         if (multistep and
                 len(collij) > 0 and
                 np.max(np.unique(collij, return_counts=True)[1])) > 1:
-            print('Recurse')
+            # print('Recurse')
             if iords is None:
                 iords = np.arange(len(self.balls))
             for i in range(10):
                 self.step_forward(dt / 10, multistep=True,
                                   iords=iords[idx_list])
+                self.cleanup(dt)
         else:
             if iords is not None:
                 balls_to_advance = [ball for i, ball in enumerate(self.balls)
@@ -303,6 +300,7 @@ class hardBallCollection(ballCollection):
                                  loc[0]], balls_to_advance[loc[1]])
                     balls_to_advance[loc[0]].advance(dt - tto)
                     balls_to_advance[loc[1]].advance(dt - tto)
+            self.cleanup(dt)
 
     def collide(self, ball1, ball2):
         """Ammend velocities of colliding balls"""
@@ -328,3 +326,34 @@ class hardBallCollection(ballCollection):
         assert np.sum(ball1.vel**2 + ball2.vel**2) - \
             np.sum(vel1old**2 + vel2old**2) < 1e-5
 
+    def cleanup(self, dt):
+        """Fix any balls that managed to overlap"""
+
+        locs = self.overlaps(self._getall('pos').transpose())
+        if self.periodic:
+            allpos2 = np.vstack([(self._getall('pos')[:, i] + 1) % bdry[1]
+                                 for i, bdry in enumerate(self.corners)])
+            locs2 = self.overlaps(allpos2)
+        else:
+            locs2 = []
+
+        locs += [loc for loc in locs2 if loc not in locs]
+        for pair in locs:
+            relative_vel = np.sqrt(np.sum((self.balls[pair[0]].vel
+                                           - self.balls[pair[1]].vel)**2))
+            relative_pos = np.sqrt(np.sum([min((self.balls[pair[0]].pos[i] -
+                                                self.balls[pair[1]].pos[i]) % bdry[1],
+                                               (self.balls[pair[1]].pos[i] -
+                                                self.balls[pair[0]].pos[i]) % bdry[1])**2
+                                           for i, bdry in enumerate(self.corners)]))
+            # print(relative_pos)
+            missed_time = abs(relative_pos - 2 * self.size) / relative_vel
+
+            for i in [0, 1]:
+                self.balls[pair[i]].advance(-missed_time)
+            self.collide(self.balls[pair[0]], self.balls[pair[1]])
+            for i in [0, 1]:
+                self.balls[pair[i]].advance(missed_time)
+
+            # assert missed_time < dt
+            # print(missed_time, dt)
