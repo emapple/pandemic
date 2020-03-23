@@ -25,7 +25,7 @@ class UpdatablePatchCollection(clt.PatchCollection):
 class sim:
     """Simulation object"""
 
-    def __init__(self, n_ball, ndim, **params):
+    def __init__(self, n_ball, ndim, blit=True, **params):
 
         self.ndim = ndim
         self.n_ball = n_ball
@@ -40,6 +40,10 @@ class sim:
         self.dt = params.get('dt', 0.01)
         self.interval = params.get('interval', 20)
         self.dohist = params.get('dohist', False)
+        self.blit = blit
+        if self.blit:
+            print('Warning: blitting improves performance but causes issues'
+                  'when pausing')
 
         if 'colorby' in params:
             self.colorby = params['colorby']
@@ -91,7 +95,12 @@ class sim:
             self.fig.set_size_inches(8, 1)
             self.ax.set_aspect('equal')
 
-        self.ax.set_title(f't={self.time:.2f}')
+        if self.blit:
+            self.title = self.ax.text(np.mean(self.balls.corners[0]),
+                                      self.ax.get_ylim()[-1] * 0.95,
+                                      f't={self.time:.2f}')
+        else:
+            self.ax.set_title(f't={self.time:.2f}')
         self.fig.tight_layout()
 
         x, y = self.balls.get_xy()
@@ -119,7 +128,10 @@ class sim:
             self.collection.set_color([self.cmap.to_rgba(v)
                                        for v in self.balls._getall('v_mag')])
 
-        return self.collection,
+        if self.blit:
+            return self.collection, self.title
+        else:
+            return self.collection
 
     def animation_update(self, i, dt):
         self.balls.step_forward(dt)
@@ -128,13 +140,17 @@ class sim:
             self.patches[p].center = x[p], y[p]
 
         self.time += dt
-        self.ax.set_title(f't={self.time:.2f}')
 
         if self.colorby == 'velocity':
             self.collection.set_color([self.cmap.to_rgba(v)
                                        for v in self.balls._getall('v_mag')])
 
-        return self.collection,
+        if self.blit:
+            self.title.set_text(f't={self.time:.2f}')
+            return self.collection, self.title
+        else:
+            self.ax.set_title(f't={self.time:.2f}')
+            return self.collection
 
     def animate(self, event):
         if not self.started:
@@ -143,7 +159,7 @@ class sim:
                                            self.animation_update(i,
                                                                  self.dt)),
                                           init_func=self.animation_init,
-                                          frames=100, blit=False,
+                                          frames=100, blit=self.blit,
                                           interval=self.interval)
             self.started = True
             self.pause = False
@@ -180,4 +196,4 @@ if __name__ == '__main__':
 
     mysim = sim(50, 2, v_maxwell_mu=5, v_maxwell_sigma=1, periodic=1,
                 corners=[[-3, 3], [-3, 3]], ball='hard', dt=0.005, rad=0.1,
-                interval=10, dohist=True)
+                interval=40, dohist=True)
