@@ -88,6 +88,55 @@ class ball:
         return np.sqrt(np.sum(self.vel**2))
 
 
+class sickBall(ball):
+    """A ball that can get sick"""
+
+    def __init__(self, pos=None, vel=None, corners=None, periodic=0,
+                 **kwargs):
+        super().__init__(pos=pos, vel=vel, corners=corners,
+                         periodic=periodic, **kwargs)
+        self.sick = False
+        self.exposed = False
+        self.cured = False
+        self.incubation = kwargs.get('incubation', 5)
+        self.duration = kwargs.get('duration', 10)
+
+    @property
+    def sick(self):
+        return self._sick
+
+    @sick.setter
+    def sick(self, status):
+        if status and type(status) == bool:
+            self._sick = 1.e-10  # start it close to 0
+        else:
+            self._sick = status
+
+    @property
+    def exposed(self):
+        return self._exposed
+
+    @exposed.setter
+    def exposed(self, status):
+        if status and type(status) == bool:
+            self._exposed = 1.e-10  # start it close to 0
+        else:
+            self._exposed = status
+
+    def advance(self, dt):
+        super().advance(dt)
+        if self.sick:
+            self.sick += dt
+            if self.sick >= self.duration:
+                self.sick = False
+                self.cured = True
+        elif self.exposed:
+            self.exposed += dt
+            if self.exposed >= self.incubation:
+                self.exposed = False
+                self.sick = True
+
+
 class ballCollection:
     """A collection of balls, including movement laws"""
 
@@ -133,7 +182,7 @@ class ballCollection:
             self.size = params['radius']
 
         max_span = np.sqrt(np.sum([bdry[1]**2 for bdry in self.corners]))
-        if (n_ball * self.size * 2)**(1. / self.ndim) > 0.5 * max_span:
+        if (n_ball)**(1. / self.ndim) * self.size * 2 > 0.33 * max_span:
             raise RuntimeError('Not enough space for requested parameters\n' +
                                'Either reduce number or size of balls,' +
                                ' or increase box size')
@@ -357,3 +406,33 @@ class hardBallCollection(ballCollection):
 
             # assert missed_time < dt
             # print(missed_time, dt)
+
+
+class sickBallCollection(hardBallCollection):
+    """Ball collection capable of getting sick"""
+
+    def __init__(self, n_ball, ndim, **params):
+        super().__init__(n_ball, ndim, **params)
+        self.incubation = params.get('incubation', 5)
+        self.duration = params.get('duration', 10)
+
+        # overwriting balls because we want them to be sickBalls
+
+        self.balls = [sickBall(pos=ball.pos, vel=ball.vel,
+                               corners=ball.corners, iord=ball.iord, periodic=ball.periodic,
+                               radius=ball.size, incubation=self.incubation,
+                               duration=self.duration) for ball in self.balls]
+
+    def collide(self, ball1, ball2):
+        super().collide(ball1, ball2)
+        if ball1.sick and self.can_catch(ball2):
+            ball2.exposed = 1.e-10
+        elif self.can_catch(ball1) and ball2.sick:
+            ball1.exposed = 1.e-10
+
+    @staticmethod
+    def can_catch(ball):
+        if not (ball.sick or ball.exposed or ball.cured):
+            return True
+        else:
+            return False
