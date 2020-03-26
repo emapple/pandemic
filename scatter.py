@@ -57,6 +57,10 @@ class sim:
 
         self.time = 0.0
 
+        self.setup_plots()
+
+    def setup_plots(self):
+        """Do initial setup of plots"""
         self.fig, self.ax = plt.subplots(1, 1)
         if self.dohist:
             self.fig2, self.ax2 = plt.subplots(1, 1)
