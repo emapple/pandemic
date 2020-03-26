@@ -30,12 +30,10 @@ class sim:
         self.ndim = ndim
         self.n_ball = n_ball
 
-        if 'ball' in params:
-            if params['ball'].lower().startswith('hard'):
-                self.balls = hardBallCollection(
-                    self.n_ball, self.ndim, **params)
+        if 'ball' in params:  # this should be a class
+            self.balls = params['ball'](self.n_ball, self.ndim, **params)
         else:
-            self.balls = ballCollection(self.n_ball, self.ndim, **params)
+            self.balls = hardBallCollection(self.n_ball, self.ndim, **params)
 
         self.dt = params.get('dt', 0.01)
         self.interval = params.get('interval', 20)
@@ -199,5 +197,5 @@ if __name__ == '__main__':
                 # periodic=1)
 
     mysim = sim(50, 2, v_maxwell_mu=5, v_maxwell_sigma=1, periodic=1,
-                corners=[[-3, 3], [-3, 3]], ball='hard', dt=0.005, rad=0.1,
+                corners=[[-3, 3], [-3, 3]], dt=0.005, rad=0.1,
                 interval=40, dohist=True)
