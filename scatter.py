@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import maxwell
 from matplotlib import animation as ani
 from matplotlib import collections as clt
-from ball import *
+from ball import ball, ballCollection, hardBallCollection
 
 
 class UpdatablePatchCollection(clt.PatchCollection):
