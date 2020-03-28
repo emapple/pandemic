@@ -37,7 +37,7 @@ class sim:
 
         self.dt = params.get('dt', 0.01)
         self.interval = params.get('interval', 40)
-        self.dohist = params.get('dohist', False)
+        self.dohist = params.get('dohist', True)
         self.blit = blit
         if self.blit:
             print('Warning: blitting improves performance but causes issues'
@@ -196,7 +196,6 @@ if __name__ == '__main__':
     # mysim = sim(10, 2, v_const=2, corners=[[-3, 4], [-1, 4]],
                 # periodic=1)
 
-    mysim = sim(50, 2, v_maxwell_mu=5, v_maxwell_sigma=1, periodic=0,
-                corners=[[-3, 3], [-3, 3]], dt=0.005, rad=0.1,
-                interval=40, dohist=True)
+    mysim = sim(150, 2, v_const=2,
+                corners=[[-3, 10], [-3, 4]], dt=0.01, rad=0.1)
     plt.show()

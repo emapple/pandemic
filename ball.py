@@ -201,7 +201,7 @@ class ballCollection:
             self.size = params['radius']
             params.pop('radius')
         else:
-            self.size = 0.025
+            self.size = 0.01 * np.diff(self.corners[0])
 
         max_span = np.sqrt(np.sum([bdry[1]**2 for bdry in self.corners]))
         if (n_ball)**(1. / self.ndim) * self.size * 2 > 0.33 * max_span:

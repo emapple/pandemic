@@ -10,7 +10,7 @@ class virus(sim):
 
     def __init__(self, n_ball, ndim=2, blit=True, **params):
         super().__init__(n_ball, ndim, blit=blit, ball=sickBallCollection,
-                         **params)
+                         dohist=False, **params)
 
         # assign a random ball as sick
         self.balls.balls[np.random.choice(np.arange(self.n_ball))].sick = True
