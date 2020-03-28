@@ -357,8 +357,10 @@ class hardBallCollection(ballCollection):
                     balls_to_advance[loc[0]].advance(tto)
                     balls_to_advance[loc[1]].advance(tto)
                     # they should now be bordering each other
-                    # print(np.sqrt(np.sum((self.balls[loc[0]].pos - self.balls[loc[1]].pos)**2)))
-                    # assert(abs(np.sqrt(np.sum((self.balls[loc[0]].pos - self.balls[loc[1]].pos)**2)) - (2 * self.size)) < 1e-5)
+                    # print(np.sqrt(np.sum((self.balls[loc[0]].pos -
+                    # self.balls[loc[1]].pos)**2)))
+                    # assert(abs(np.sqrt(np.sum((self.balls[loc[0]].pos -
+                    # self.balls[loc[1]].pos)**2)) - (2 * self.size)) < 1e-5)
                     self.collide(balls_to_advance[
                                  loc[0]], balls_to_advance[loc[1]])
                     balls_to_advance[loc[0]].advance(dt - tto)
@@ -414,10 +416,12 @@ class hardBallCollection(ballCollection):
         for pair in locs:
             relative_vel = np.sqrt(np.sum((self.balls[pair[0]].vel
                                            - self.balls[pair[1]].vel)**2))
-            relative_pos = np.sqrt(np.sum([min((self.balls[pair[0]].pos[i] -
-                                                self.balls[pair[1]].pos[i]) % bdry[1],
-                                               (self.balls[pair[1]].pos[i] -
-                                                self.balls[pair[0]].pos[i]) % bdry[1])**2
+            relative_pos = np.sqrt(np.sum([min(((self.balls[pair[0]].pos[i] -
+                                                 self.balls[pair[1]].pos[i])
+                                                % bdry[1]),
+                                               ((self.balls[pair[1]].pos[i] -
+                                                 self.balls[pair[0]].pos[i])
+                                                % bdry[1]))**2
                                            for i, bdry in enumerate(self.corners)]))
             # print(relative_pos)
             missed_time = abs(relative_pos - 2 * self.size) / relative_vel
@@ -443,7 +447,8 @@ class sickBallCollection(hardBallCollection):
         # overwriting balls because we want them to be sickBalls
 
         self.balls = [sickBall(pos=ball.pos, vel=ball.vel,
-                               corners=ball.corners, iord=ball.iord, periodic=ball.periodic,
+                               corners=ball.corners, iord=ball.iord,
+                               periodic=ball.periodic,
                                radius=ball.size, incubation=self.incubation,
                                duration=self.duration) for ball in self.balls]
 
