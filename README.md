@@ -1,6 +1,6 @@
 # pandemic
 
-A basic pandemic simulation, inspired by [the Washington Post's simulations](https://www.washingtonpost.com/graphics/2020/world/corona-simulator/?itid=sf_coronavirus). Also works as a plain hard sphere scattering simulation.
+A basic pandemic simulation, inspired by the [Washington Post's simulations](https://www.washingtonpost.com/graphics/2020/world/corona-simulator/?itid=sf_coronavirus). Also works as a plain hard sphere scattering simulation.
 
 This should be simple to run, and the default parameters should be somewhat sensible.
 
@@ -18,7 +18,7 @@ from within a python session. The possible keyword arguments are listed below.
 
 The required arguments for `sim` are the number of particles and the number of dimensions (1, 2, or 3). All units are abritrary, so what matters is fiddling with parameters and comparing outcomes, not necessarily the outcome of a single simulation. The 3 dimensional case has not been tested, and is less interesting as the visualization is only 2D anyway.
 
-By default, a histogram of the velocity magnitudes will also be plotted, so you can see how the equilibrium always approaches something like the (Maxwell-Boltzmann distribution)[https://en.wikipedia.org/wiki/Maxwell%E2%80%93Boltzmann_distribution]. You can turn off the histogram with `dohist=False`.
+By default, a histogram of the velocity magnitudes will also be plotted, so you can see how the equilibrium always approaches something like the [Maxwell-Boltzmann distribution](https://en.wikipedia.org/wiki/Maxwell%E2%80%93Boltzmann_distribution). You can turn off the histogram with `dohist=False`.
 
 Optional parameters include `periodic` (default False), which determines whether there are periodic boundary conditions or if balls will scatter off walls. We also have `v_const`, which assigns an initial speed to all balls. By default, they all start with `v_const=1`. `v_maxwell_mu` and `v_maxwell_sigma` can be specified instead to initialize from a Maxwell distribution. The boxsize is by default 2X2. You may specify the box with the `corners` argument, which may be of the form `[[xi, xj], [yi, yj]]` or `[side1, side2]`. In any case, the box will be translated so one corner is at the origin. The radius of the balls may be specified with `radius` (default about 1% of box size).
 
