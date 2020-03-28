@@ -28,19 +28,27 @@ class virus(sim):
             self.ax3.set_xlim([0, 400])
             self.ax3.set_ylim([0, 1])
             self.fig3.tight_layout()
-            numhealthy, numsick, numcured = self.calc_track()
+            numhealthy, numexposed, numsick, numcured = self.calc_track()
             self.numhealthy = [numhealthy]
+            self.numexposed = [numexposed]
             self.numsick = [numsick]
             self.numcured = [numcured]
             if self.dotrack:
                 self.fills = []
                 self.fills.append(self.ax3.fill_between(
                     [0], [0], self.numhealthy, facecolor='C0'))
-                self.fills.append(self.ax3.fill_between([0], self.numhealthy, [sum(x) for x in
-                                                                               zip(self.numhealthy, self.numsick)],
+                level1 = [sum(x) for x in zip(self.numhealthy,
+                                              self.numexposed)]
+                level2 = [sum(x) for x in zip(level1, self.numsick)]
+                self.fills.append(self.ax3.fill_between([0], self.numhealthy,
+                                                        level1,
+                                                        facecolor='C4'))
+                self.fills.append(self.ax3.fill_between([0], level1,
+                                                        level2,
                                                         facecolor='C7'))
-                self.fills.append(self.ax3.fill_between([0], [sum(x) for x in
-                                                              zip(self.numhealthy, self.numsick)], [1], facecolor='C2'))
+                self.fills.append(self.ax3.fill_between([0],
+                                                        level2,
+                                                        [1], facecolor='C2'))
                 # self.lines = [self.ax3.plot([0], x, c=color, lw=3)[0]
                 #               for x, color in zip([self.numhealthy,
                 #                                    self.numsick,
@@ -52,8 +60,10 @@ class virus(sim):
         """Calculate fraction of healthy, sick, and cured"""
         numsick = (self.balls._getall('sick') > 0).sum()
         numcured = self.balls._getall('cured').sum()
-        numhealthy = len(self.balls.balls) - numsick - numcured
+        exposed = (self.balls._getall('exposed') > 0).sum()
+        numhealthy = len(self.balls.balls) - numsick - numcured - exposed
         return (numhealthy / len(self.balls.balls),
+                exposed / len(self.balls.balls),
                 numsick / len(self.balls.balls),
                 numcured / len(self.balls.balls))
 
@@ -94,28 +104,35 @@ class virus(sim):
             return self.collection
 
     def track_animation(self, i):
-        numhealthy, numsick, numcured = self.calc_track()
+        numhealthy, numexposed, numsick, numcured = self.calc_track()
         self.numhealthy.append(numhealthy)
+        self.numexposed.append(numexposed)
         self.numsick.append(numsick)
         self.numcured.append(numsick)
         if len(self.numhealthy) > 500:
             self.numhealthy = self.numhealthy[-500:]
+            self.numexposed = self.numexposed[-500:]
             self.numsick = self.numsick[-500:]
             self.numcured = self.numcured[-500:]
         self.ax3.collections.clear()
         self.fills = []
-        self.fills.append(self.ax3.fill_between(
-            np.arange(len(self.numhealthy[-400:])
-                      ), [0] * len(self.numhealthy[-400:]),
-            self.numhealthy[-400:], facecolor='C0'))
-        self.fills.append(self.ax3.fill_between(np.arange(len(self.numhealthy[-400:])),
-                                                self.numhealthy[-400:], [sum(x) for x in
-                                                                  zip(self.numhealthy[-400:], self.numsick[-400:])],
+        xs = np.arange(len(self.numhealthy[-400:]))
+        level1 = [sum(x) for x in zip(self.numhealthy[-400:],
+                                      self.numexposed[-400:])]
+        level2 = [sum(x) for x in zip(level1, self.numsick[-400:])]
+        self.fills.append(self.ax3.fill_between(xs,
+                                                [0] *
+                                                len(xs),
+                                                self.numhealthy[-400:],
+                                                facecolor='C0'))
+        self.fills.append(self.ax3.fill_between(xs, self.numhealthy[-400:],
+                                                level1, facecolor='C4'))
+        self.fills.append(self.ax3.fill_between(xs,
+                                                level1, level2,
                                                 facecolor='C7'))
-        self.fills.append(self.ax3.fill_between(np.arange(len(self.numhealthy[-400:])),
-                                                [sum(x) for x in
-                                                 zip(self.numhealthy[-400:], self.numsick[-400:])],
-                                                [1] * len(self.numhealthy[-400:]), facecolor='C2'))
+        self.fills.append(self.ax3.fill_between(xs,
+                                                level2,
+                                                [1] * len(xs), facecolor='C2'))
         # for line, numtype in zip(self.lines,
         #                          [self.numhealthy, self.numsick, self.numcured]):
         #     line.set_data(np.arange(len(numtype[-400:])), numtype[-400:])
