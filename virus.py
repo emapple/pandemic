@@ -168,3 +168,4 @@ if __name__ == '__main__':
 
     pan = virus(50, 2, periodic=0,
                 incubation=1, duration=3)
+    plt.show()
