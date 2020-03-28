@@ -484,6 +484,13 @@ class sickBallCollection(hardBallCollection):
                                radius=ball.size, incubation=self.incubation,
                                duration=self.duration) for ball in self.balls]
 
+        if 'vaccinated' in params:
+            assert params['vaccinated'] >= 0 and params['vaccinated'] <= 1
+            for ball in self.balls:
+                r = np.random.random()
+                if r > params['vaccinated']:
+                    ball.cured = True
+
     def collide(self, ball1, ball2):
         super().collide(ball1, ball2)
         if ball1.sick and self.can_catch(ball2):
