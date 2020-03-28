@@ -230,10 +230,12 @@ class ballCollection:
          for ball, val in zip(self.balls, all_attrs)]
 
     def step_forward(self, dt):
+        """Step forward all balls in ballCollection"""
         for ball in self.balls:
             ball.advance(dt)
 
     def overlaps(self, positions):
+        """Calculate which balls are overlapping"""
         dp = np.array([np.subtract.outer(p, p)
                        for p in positions])
         pp = (dp * dp).sum(axis=0) - (2 * self.size)**2
@@ -258,6 +260,11 @@ class hardBallCollection(ballCollection):
     """Hard scattering ball"""
 
     def time_to_collision(self, positions, velocities):
+        """Calculate how long until balls collide
+
+        Calculates for all pairwise combinations
+        Balls that will not collide are nans
+        """
         dp = np.array([np.subtract.outer(p, p)
                        for p in positions])
         dv = np.array([np.subtract.outer(v, v)
@@ -311,7 +318,14 @@ class hardBallCollection(ballCollection):
         return locs, t_to_intersection
 
     def step_forward(self, dt, multistep=True, iords=None):
-        """If multistep, will subdivide to avoid multiple simultaneous collisions"""
+        """Step forward all balls in hardBallCollection
+
+        Override of method in ballCollection
+        If multistep, will subdivide to avoid multiple simultaneous
+            collisions
+        If iords are passed, only calculates for subset of balls with
+        iord in iords
+        """
         collij, t_to_intersect = self.will_collide(dt, iords=iords)
         idx_list = np.unique(collij)
 
@@ -352,7 +366,11 @@ class hardBallCollection(ballCollection):
             self.cleanup(dt)
 
     def collide(self, ball1, ball2):
-        """Ammend velocities of colliding balls"""
+        """Ammend velocities of colliding balls
+
+        Does not change any positions, so balls should be at the point
+        of collision
+        """
         normal = ball2.pos - ball1.pos
         normal = normal / np.sqrt(np.sum(normal**2))
         if self.ndim == 1:
@@ -376,7 +394,13 @@ class hardBallCollection(ballCollection):
             np.sum(vel1old**2 + vel2old**2) < 1e-5
 
     def cleanup(self, dt):
-        """Fix any balls that managed to overlap"""
+        """Fix any balls that managed to overlap
+
+        When predicting collisions in will_collide(), we do not
+        account for possible collisions *after turnaround*, which is
+        where most of the accidental overlaps occur. Also, some edge
+        cases need correction.
+        """
 
         locs = self.overlaps(self._getall('pos').transpose())
         if self.periodic:
