@@ -18,7 +18,7 @@ class ball:
     """
 
     def __init__(self, pos=None, vel=None, corners=None, periodic=0,
-                 **kwargs):
+                 radius=None, **kwargs):
         """Initialize 6D phase space of ball
 
         If pos not provided, randomly chosen positions according to
@@ -65,10 +65,10 @@ class ball:
                                  'boundary conditions')
             self.periodic = True
 
-        if 'radius' in kwargs:
-            self.size = kwargs['radius']
-        else:
+        if radius is None:
             self.size = 0.05
+        else:
+            self.size = radius
 
     def __str__(self):
         return f'ball {self.iord}, pos={self.pos}, vel={self.vel}'
@@ -82,6 +82,28 @@ class ball:
         if self.periodic:
             for i, bdry in enumerate(self.corners):
                 self.pos[i] %= bdry[1]
+        else:
+            self.reflect()
+
+    def reflect(self):
+        """Ammend pos and vel of ball that has passed boundary
+
+        ball1 is the ball that has crossed the boundary
+        bdry_crossings are the dimensions in which it has crossed
+        """
+        for dim in range(self.dim):
+            if (self.pos[dim] - self.size > 0
+                    and self.pos[dim] + self.size < self.corners[dim][1]):
+                continue
+            neg_dist = self.pos[dim] - self.size
+            if neg_dist <= 0:
+                dist_since_crossing = neg_dist
+            else:
+                dist_since_crossing = (self.pos[dim] + self.size
+                                       - self.corners[dim][1])
+
+            self.pos[dim] -= dist_since_crossing
+            self.vel[dim] *= -1
 
     @property
     def v_mag(self):
@@ -92,9 +114,9 @@ class sickBall(ball):
     """A ball that can get sick"""
 
     def __init__(self, pos=None, vel=None, corners=None, periodic=0,
-                 **kwargs):
+                 radius=None, **kwargs):
         super().__init__(pos=pos, vel=vel, corners=corners,
-                         periodic=periodic, **kwargs)
+                         periodic=periodic, radius=radius, **kwargs)
         self.sick = False
         self.exposed = False
         self.cured = False
@@ -178,7 +200,6 @@ class ballCollection:
         elif 'radius' in params:
             self.size = params['radius']
         else:
-            params['radius'] = 0.05
             self.size = params['radius']
 
         max_span = np.sqrt(np.sum([bdry[1]**2 for bdry in self.corners]))
@@ -187,7 +208,8 @@ class ballCollection:
                                'Either reduce number or size of balls,' +
                                ' or increase box size')
 
-        self.balls = [ball(vel=v, corners=self.corners, iord=i, **params)
+        self.balls = [ball(vel=v, corners=self.corners, iord=i,
+                           radius=self.size, **params)
                       for i, v in enumerate(vec)]
 
         self.time = 0
@@ -233,6 +255,20 @@ class ballCollection:
         """Step forward all balls in ballCollection"""
         for ball in self.balls:
             ball.advance(dt)
+
+    def filt_pos_vel(self, iords=None):
+        """Return pos and vel of balls with iord in iords"""
+        allpos = self._getall('pos')
+        allvel = self._getall('vel')
+        if iords is not None:
+            # this code gets the indices that have iord in iords
+            iords = np.array(iords)
+            idx = np.argmax(self._getall('iord')[
+                None, :] == iords[:, None], axis=1)
+            allpos = allpos[idx]
+            allvel = allvel[idx]
+
+        return allpos, allvel
 
     def overlaps(self, positions):
         """Calculate which balls are overlapping"""
@@ -280,15 +316,7 @@ class hardBallCollection(ballCollection):
 
         Returns indices, not iords
         """
-        allpos = self._getall('pos')
-        allvel = self._getall('vel')
-        if iords is not None:
-            # this code gets the indices that have iord in iords
-            iords = np.array(iords)
-            idx = np.argmax(self._getall('iord')[
-                            None, :] == iords[:, None], axis=1)
-            allpos = allpos[idx]
-            allvel = allvel[idx]
+        allpos, allvel = self.filt_pos_vel(iords=iords)
 
         T = self.time_to_collision(allpos.transpose(), allvel.transpose())
         locs1 = np.where(((T > 0) & (T <= dt)))
