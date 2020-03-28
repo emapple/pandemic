@@ -31,7 +31,7 @@ This simulation is built off the regular hard sphere scattering, but simulates t
 from virus import virus
 virus(50, **kwargs)
 ```
-from within a python session. Many arguments are the same as above, but with potentially different defaults. Additional arguments include `incubation` (default 1) and `duration` (default 3), which define how long someone is infected but not yet contagious, and how long they are sick/contagious before healing. By default, a figure will show the numbers of people of each illness status; you may turn this off with `dotrack=False`.
+from within a python session. Many arguments are the same as above, but with potentially different defaults. Additional arguments include `incubation` (default 1) and `duration` (default 3), which define how long someone is infected but not yet contagious, and how long they are sick/contagious before healing. By default, a figure will show the numbers of people of each illness status; you may turn this off with `dotrack=False`. Finally, you can add `vaccinated` as an argument (a number between 0 and 1) to initialize a fraction of the population with immunity (they will be listed as "cured").
 
 ## How do parameters influence outcome?
 If you try the following simulations, you can note the difference in outcome, or the difference in time taken to reach a given outcome.
