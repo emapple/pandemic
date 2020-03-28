@@ -20,6 +20,12 @@ class virus(sim):
 
     def setup_plots(self):
         super().setup_plots()
+
+        # axes don't matter in this case
+        self.ax.axes.get_xaxis().set_visible(False)
+        self.ax.axes.get_yaxis().set_visible(False)
+
+        # add legend to existing plot
         self.fig.subplots_adjust(top=0.9)
         self.ax.scatter([], [], color='C0', label='Healthy')
         self.ax.scatter([], [], color='C4', label='Infected (Not Contagious)')

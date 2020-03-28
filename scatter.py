@@ -100,7 +100,7 @@ class sim:
         if self.blit:
             self.title = self.ax.text(np.mean(self.balls.corners[0]),
                                       self.ax.get_ylim()[-1] * 0.95,
-                                      f't={self.time:.2f}')
+                                      f't={self.time:.2f}', ha='center')
         else:
             self.ax.set_title(f't={self.time:.2f}')
         self.fig.tight_layout()
