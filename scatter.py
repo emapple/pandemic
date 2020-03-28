@@ -197,5 +197,5 @@ if __name__ == '__main__':
                 # periodic=1)
 
     mysim = sim(150, 2, v_const=2,
-                corners=[[-3, 10], [-3, 4]], dt=0.01, rad=0.1)
+                corners=[[-3, 10], [-3, 4]], dt=0.01)
     plt.show()
