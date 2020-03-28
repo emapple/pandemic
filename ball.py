@@ -175,7 +175,7 @@ class ballCollection:
                             for corner in params['corners']]
             params.pop('corners', None)
         else:
-            self.corners = [[0, 1] for i in range(self.ndim)]
+            self.corners = [[0, 2] for i in range(self.ndim)]
 
         if 'v_const' in params:
             v_init = np.array([params['v_const']] * self.n_ball)
@@ -186,7 +186,7 @@ class ballCollection:
                          scale=params['v_maxwell_sigma'])
             v_init = mx.rvs(self.n_ball)
         else:
-            v_init = np.random.random(size=self.n_ball)
+            v_init = np.ones(self.n_ball)
 
         vec = np.random.multivariate_normal(np.zeros(self.ndim),
                                             cov=np.eye(self.ndim),
@@ -199,8 +199,9 @@ class ballCollection:
             self.size = params['rad']
         elif 'radius' in params:
             self.size = params['radius']
+            params.pop('radius')
         else:
-            self.size = params['radius']
+            self.size = 0.025
 
         max_span = np.sqrt(np.sum([bdry[1]**2 for bdry in self.corners]))
         if (n_ball)**(1. / self.ndim) * self.size * 2 > 0.33 * max_span:
@@ -469,8 +470,8 @@ class sickBallCollection(hardBallCollection):
 
     def __init__(self, n_ball, ndim, **params):
         super().__init__(n_ball, ndim, **params)
-        self.incubation = params.get('incubation', 5)
-        self.duration = params.get('duration', 10)
+        self.incubation = params.get('incubation', 1)
+        self.duration = params.get('duration', 3)
 
         # overwriting balls because we want them to be sickBalls
 

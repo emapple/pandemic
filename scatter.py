@@ -36,7 +36,7 @@ class sim:
             self.balls = hardBallCollection(self.n_ball, self.ndim, **params)
 
         self.dt = params.get('dt', 0.01)
-        self.interval = params.get('interval', 20)
+        self.interval = params.get('interval', 40)
         self.dohist = params.get('dohist', False)
         self.blit = blit
         if self.blit:

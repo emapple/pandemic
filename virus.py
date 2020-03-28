@@ -76,7 +76,7 @@ class virus(sim):
         for p in range(len(self.balls.balls)):
             self.patches[p].center = x[p], y[p]
         self.collection.set_color(['C7' if ball.sick else
-                                   'C1' if ball.exposed
+                                   'C4' if ball.exposed
                                    else 'C2' if ball.cured
                                    else 'C0' for ball in self.balls.balls])
         # 'C0' if not ball.sick else 'C7'
@@ -133,5 +133,5 @@ class virus(sim):
 
 if __name__ == '__main__':
 
-    pan = virus(50, 2, radius=0.01, dt=0.005, interval=40, periodic=1,
-                incubation=2, duration=4)
+    pan = virus(50, 2, periodic=0,
+                incubation=1, duration=3)
