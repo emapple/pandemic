@@ -18,6 +18,16 @@ class virus(sim):
         self.dotrack = params.get('dotrack', True)
         self.setup_track()
 
+    def setup_plots(self):
+        super().setup_plots()
+        self.fig.subplots_adjust(top=0.9)
+        self.ax.scatter([], [], color='C0', label='Healthy')
+        self.ax.scatter([], [], color='C4', label='Infected (Not Contagious)')
+        self.ax.scatter([], [], color='C7', label='Sick (Contagious)')
+        self.ax.scatter([], [], color='C2', label='Cured')
+        self.ax.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left',
+                       ncol=4, mode="expand", borderaxespad=0.)
+
     def setup_track(self):
         """Set up plots"""
         if self.dotrack:
