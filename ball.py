@@ -171,8 +171,11 @@ class ballCollection:
         self.periodic = params.get('periodic', 1)
         if 'corners' in params:
             # move origin to 0
-            self.corners = [[0, np.diff(corner)[0]]
-                            for corner in params['corners']]
+            try:
+                self.corners = [[0, np.diff(corner)[0]]
+                                for corner in params['corners']]
+            except ValueError:
+                self.corners = [[0, x] for x in params['corners']]
             params.pop('corners', None)
         else:
             self.corners = [[0, 2] for i in range(self.ndim)]
