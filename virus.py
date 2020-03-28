@@ -43,6 +43,7 @@ class virus(sim):
             self.ax3.set_yticks([], [])
             self.ax3.set_xlim([0, 400])
             self.ax3.set_ylim([0, 1])
+            self.ax3.set_title(f't={self.time:.2f}')
             self.fig3.tight_layout()
             numhealthy, numexposed, numsick, numcured = self.calc_track()
             self.numhealthy = [numhealthy]
@@ -120,6 +121,7 @@ class virus(sim):
             return self.collection
 
     def track_animation(self, i):
+        self.ax3.set_title(f't={self.time:.2f}')
         numhealthy, numexposed, numsick, numcured = self.calc_track()
         self.numhealthy.append(numhealthy)
         self.numexposed.append(numexposed)
