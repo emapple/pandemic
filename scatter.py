@@ -69,7 +69,7 @@ class sim:
             self.histbins = np.linspace(0,
                                         2.5 *
                                         np.max(self.balls._getall('v_mag')),
-                                        len(self.balls.balls) // 9)
+                                        max(2, len(self.balls.balls) // 9))
             vals, histbins = np.histogram(self.balls._getall('v_mag'),
                                           bins=self.histbins)
             self.ax2.set_ylim([0, 1.2 * np.max(vals)])
