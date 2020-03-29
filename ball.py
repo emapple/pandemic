@@ -177,6 +177,12 @@ class ballCollection:
             except ValueError:
                 self.corners = [[0, x] for x in params['corners']]
             params.pop('corners', None)
+            if len(self.corners) > self.ndim:
+                print('More boundaries provided than dimensions')
+                self.corners = self.corners[:ndim]
+            elif self.ndim < len(self.corners):
+                raise ValueError('Must provide as many boundaries'
+                                 'as dimensions')
         else:
             self.corners = [[0, 2] for i in range(self.ndim)]
 
@@ -204,7 +210,10 @@ class ballCollection:
             self.size = params['radius']
             params.pop('radius')
         else:
-            self.size = 0.01 * np.diff(self.corners[0])
+            if self.ndim == 1:
+                self.size = 0.5 * 0.3 * np.diff(self.corners[0]) / self.n_ball
+            else:
+                self.size = 0.01 * np.diff(self.corners[0])
 
         max_span = np.sqrt(np.sum([bdry[1]**2 for bdry in self.corners]))
         if (n_ball)**(1. / self.ndim) * self.size * 2 > 0.33 * max_span:
