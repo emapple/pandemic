@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import maxwell
+import warnings
 
 # with thanks to
 # https://pdfs.semanticscholar.org/cd56/57befb9af4fd531d33892ed9e5b0098de1d6.pdf
@@ -27,7 +28,7 @@ class ball:
         corners is a series of tuples/lists defining boundaries,
                         e.g. ((minx, maxx), (miny, maxy))
         """
-
+        warnings.resetwarnings()
         self.corners = corners
         self.periodic = periodic
 
@@ -331,29 +332,31 @@ class hardBallCollection(ballCollection):
         """
         allpos, allvel = self.filt_pos_vel(iords=iords)
 
-        T = self.time_to_collision(allpos.transpose(), allvel.transpose())
-        locs1 = np.where(((T > 0) & (T <= dt)))
+        with np.errstate(invalid='ignore'):
 
-        if self.periodic:
-            allpos2 = np.vstack([(allpos[:, i] + 1) % bdry[1]
-                                 for i, bdry in enumerate(self.corners)])
-            T2 = self.time_to_collision(allpos2, allvel.transpose())
-            locs2 = np.where(((T2 > 0) & (T2 <= dt)))
-        else:
-            locs2 = []
+            T = self.time_to_collision(allpos.transpose(), allvel.transpose())
+            locs1 = np.where(((T > 0) & (T <= dt)))
 
-        temp_loc = [(i, j) for i, j in zip(locs1[0], locs1[1])]
-        locs1 = list(set([self.pair_sort(pair) for pair in temp_loc]))
+            if self.periodic:
+                allpos2 = np.vstack([(allpos[:, i] + 1) % bdry[1]
+                                     for i, bdry in enumerate(self.corners)])
+                T2 = self.time_to_collision(allpos2, allvel.transpose())
+                locs2 = np.where(((T2 > 0) & (T2 <= dt)))
+            else:
+                locs2 = []
 
-        if self.periodic:
-            temp_loc2 = [(i, j) for i, j in zip(locs2[0], locs2[1])
-                         if (i, j) not in temp_loc]
-            locs2 = list(set([self.pair_sort(pair) for pair in temp_loc2]))
+            temp_loc = [(i, j) for i, j in zip(locs1[0], locs1[1])]
+            locs1 = list(set([self.pair_sort(pair) for pair in temp_loc]))
 
-        t_to_intersection = [T[idx]
-                             for idx in locs1] + [T2[idx] for idx in locs2]
+            if self.periodic:
+                temp_loc2 = [(i, j) for i, j in zip(locs2[0], locs2[1])
+                             if (i, j) not in temp_loc]
+                locs2 = list(set([self.pair_sort(pair) for pair in temp_loc2]))
 
-        locs = locs1 + locs2
+            t_to_intersection = [T[idx]
+                                 for idx in locs1] + [T2[idx] for idx in locs2]
+
+            locs = locs1 + locs2
 
         assert len(t_to_intersection) == len(locs)
         return locs, t_to_intersection
@@ -432,9 +435,17 @@ class hardBallCollection(ballCollection):
         ball1.vel = ball1_vel_temp
 
         # assert momentum and energy conserved
-        assert np.all((ball1.vel + ball2.vel - (vel1old + vel2old)) < 1e-5)
-        assert np.sum(ball1.vel**2 + ball2.vel**2) - \
-            np.sum(vel1old**2 + vel2old**2) < 1e-5
+        if not np.all((ball1.vel + ball2.vel - (vel1old + vel2old)) < 1e-5):
+            warnings.warn(f'Violation of conservation of momentum. '
+                          'Try running with smaller dt to avoid, '
+                          'or with fewer balls of larger radii',
+                          category=RuntimeWarning)
+        # if not np.sum(ball1.vel**2 + ball2.vel**2) - \
+        #         np.sum(vel1old**2 + vel2old**2) < 1e-5:
+        #     warnings.warn(f'Violation of conservation of energy. '
+        #                   'Try running with smaller dt to avoid, '
+        #                   'or with fewer balls of larger radii',
+        #                   category=RuntimeWarning)
 
     def cleanup(self, dt):
         """Fix any balls that managed to overlap
